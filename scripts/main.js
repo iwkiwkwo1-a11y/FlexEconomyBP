@@ -147,72 +147,86 @@ export function handleCommand(args, player) {
     }
 }
 
-// Register command
-world.beforeEvents.chatSend.subscribe((event) => {
-    const message = event.message.toLowerCase().trim();
-    
-    if (message.startsWith("/sell")) {
-        event.cancel = true; // Cancel chat message
-        
-        const args = message.slice(5).trim().split(/\s+/);
-        handleCommand(args, event.sender);
-    }
-    
-    // Command untuk cek saldo
-    if (message.startsWith("/money") || message.startsWith("/balance") || message.startsWith("/bal")) {
-        event.cancel = true;
-        initializePlayer(event.sender.id);
-        const balance = getBalance(event.sender.id);
-        event.sender.sendMessage(`§eSaldo kamu: §a$${balance}`);
-    }
-    
-    // Command untuk transfer
-    if (message.startsWith("/pay")) {
-        event.cancel = true;
-        const parts = message.slice(4).trim().split(/\s+/);
-        
-        if (parts.length < 2) {
-            event.sender.sendMessage("§cGunakan: /pay <pemain> <jumlah>");
-            return;
-        }
-        
-        const targetName = parts[0];
-        const amount = parseInt(parts[1]);
-        
-        if (isNaN(amount) || amount <= 0) {
-            event.sender.sendMessage("§cJumlah harus berupa angka positif!");
-            return;
-        }
-        
-        // Cari pemain target
-        const targetPlayer = world.getPlayers({ name: targetName })[0];
-        
-        if (!targetPlayer) {
-            event.sender.sendMessage(`§cPemain "${targetName}" tidak ditemukan!`);
-            return;
-        }
-        
-        initializePlayer(event.sender.id);
-        initializePlayer(targetPlayer.id);
-        
-        const { transferBalance } = require("./economy.js");
-        
-        if (transferBalance(event.sender.id, targetPlayer.id, amount)) {
-            event.sender.sendMessage(`§aBerhasil mengirim $${amount} ke ${targetPlayer.name}!`);
-            targetPlayer.sendMessage(`§aKamu menerima $${amount} dari ${event.sender.name}!`);
-        } else {
-            event.sender.sendMessage("§cSaldo tidak mencukupi!");
-        }
-    }
-});
+import { world, system } from "@minecraft/server";
+import { ActionFormResponse, MessageFormResponse, ModalFormData } from "@minecraft/server-ui";
+import { getBalance, addBalance, initializePlayer } from "./economy.js";
+import { getItemPrice } from "./config.js";
 
-// Welcome message saat player join
-world.afterEvents.playerJoin.subscribe((event) => {
-    const player = event.player;
-    initializePlayer(player.id);
-    player.sendMessage("§a=== Flex Economy System ===");
-    player.sendMessage("§eGunakan /sell untuk membuka Virtual Chest");
-    player.sendMessage("§eGunakan /money untuk cek saldo");
-    player.sendMessage("§eGunakan /pay <pemain> <jumlah> untuk transfer");
-    player.sendMessage(`§eBonus awal: §a$${getBalance(player.id)}`);
-});
+// Pastikan world tersedia sebelum registrasi event
+if (!world || !world.beforeEvents) {
+    console.error("Gagal mengakses world atau beforeEvents. Pastikan Script API aktif.");
+} else {
+    // Register command handler
+    world.beforeEvents.chatSend.subscribe((event) => {
+        const message = event.message.toLowerCase().trim();
+        
+        if (message.startsWith("/sell")) {
+            event.cancel = true; // Cancel chat message
+            
+            const args = message.slice(5).trim().split(/\s+/);
+            handleCommand(args, event.sender);
+        }
+        
+        // Command untuk cek saldo
+        if (message.startsWith("/money") || message.startsWith("/balance") || message.startsWith("/bal")) {
+            event.cancel = true;
+            initializePlayer(event.sender.id);
+            const balance = getBalance(event.sender.id);
+            event.sender.sendMessage(`§eSaldo kamu: §a$${balance}`);
+        }
+        
+        // Command untuk transfer
+        if (message.startsWith("/pay")) {
+            event.cancel = true;
+            const parts = message.slice(4).trim().split(/\s+/);
+            
+            if (parts.length < 2) {
+                event.sender.sendMessage("§cGunakan: /pay <pemain> <jumlah>");
+                return;
+            }
+            
+            const targetName = parts[0];
+            const amount = parseInt(parts[1]);
+            
+            if (isNaN(amount) || amount <= 0) {
+                event.sender.sendMessage("§cJumlah harus berupa angka positif!");
+                return;
+            }
+            
+            // Cari pemain target
+            const targetPlayer = world.getPlayers({ name: targetName })[0];
+            
+            if (!targetPlayer) {
+                event.sender.sendMessage(`§cPemain "${targetName}" tidak ditemukan!`);
+                return;
+            }
+            
+            initializePlayer(event.sender.id);
+            initializePlayer(targetPlayer.id);
+            
+            // Import dinamis untuk menghindari circular dependency jika ada
+            const economyModule = require("./economy.js");
+            if (economyModule.transferBalance) {
+                if (economyModule.transferBalance(event.sender.id, targetPlayer.id, amount)) {
+                    event.sender.sendMessage(`§aBerhasil mengirim $${amount} ke ${targetPlayer.name}!`);
+                    targetPlayer.sendMessage(`§aKamu menerima $${amount} dari ${event.sender.name}!`);
+                } else {
+                    event.sender.sendMessage("§cSaldo tidak mencukupi!");
+                }
+            } else {
+                console.error("Fungsi transferBalance tidak ditemukan di economy.js");
+            }
+        }
+    });
+
+    // Welcome message saat player join
+    world.afterEvents.playerJoin.subscribe((event) => {
+        const player = event.player;
+        initializePlayer(player.id);
+        player.sendMessage("§a=== Flex Economy System ===");
+        player.sendMessage("§eGunakan /sell untuk membuka Virtual Chest");
+        player.sendMessage("§eGunakan /money untuk cek saldo");
+        player.sendMessage("§eGunakan /pay <pemain> <jumlah> untuk transfer");
+        player.sendMessage(`§eBonus awal: §a$${getBalance(player.id)}`);
+    });
+}
