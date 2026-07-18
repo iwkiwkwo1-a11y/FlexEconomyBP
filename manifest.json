@@ -4,7 +4,7 @@
         "name": "Flex Economy System",
         "description": "Sistem ekonomi fleksibel dengan fitur virtual chest untuk sell.",
         "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        "version": [1, 0, 0],
+        "version": [1, 0, 1],
         "min_engine_version": [1, 26, 30]
     },
     "modules": [
@@ -17,7 +17,7 @@
             "type": "script",
             "language": "javascript",
             "uuid": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-            "version": [1, 0, 0],
+            "version": [1, 0, 1],
             "entry": "scripts/main.js"
         }
     ],
@@ -25,10 +25,9 @@
         {
             "module_name": "@minecraft/server",
             "version": "1.15.0"
-        },
-        {
-            "module_name": "@minecraft/server-ui",
-            "version": "1.3.0"
         }
+    ],
+    "capabilities": [
+        "chat"
     ]
 }

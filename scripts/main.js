@@ -1,7 +1,15 @@
 import { world, system } from "@minecraft/server";
-import { ActionFormResponse, MessageFormResponse, ModalFormData } from "@minecraft/server-ui";
 import { getBalance, addBalance, initializePlayer } from "./economy.js";
 import { getItemPrice } from "./config.js";
+
+// Cek apakah UI tersedia sebelum mengimpor
+let ModalFormData = null;
+try {
+    const uiModule = await import("@minecraft/server-ui");
+    ModalFormData = uiModule.ModalFormData;
+} catch (e) {
+    console.warn("[Flex Economy] Module @minecraft/server-ui tidak tersedia. Fitur UI mungkin tidak berjalan.");
+}
 
 // Fungsi untuk mendapatkan item yang bisa dijual dari inventory pemain
 function getSellableItems(player) {
@@ -32,6 +40,14 @@ function getSellableItems(player) {
 async function showVirtualChest(player, sellableItems) {
     if (sellableItems.length === 0) {
         player.sendMessage("§c[Virtual Chest] Tidak ada item yang bisa dijual di inventory kamu!");
+        return;
+    }
+
+    // Cek apakah UI tersedia
+    if (!ModalFormData) {
+        player.sendMessage("§c[Error] Fitur UI tidak tersedia di server ini.");
+        player.sendMessage("§eGunakan /sell all untuk menjual semua item secara otomatis.");
+        sellAllItems(player, sellableItems);
         return;
     }
 
