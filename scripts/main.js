@@ -151,68 +151,76 @@ export function handleCommand(args, player) {
 if (!world || !world.beforeEvents) {
     console.error("Gagal mengakses world atau beforeEvents. Pastikan Script API aktif.");
 } else {
-    // Register command handler
-    world.beforeEvents.chatSend.subscribe((event) => {
-        const message = event.message.toLowerCase().trim();
-        
-        if (message.startsWith("/sell")) {
-            event.cancel = true; // Cancel chat message
+    // Register command handler - PERBAIKAN UNTUK VERSI 1.26+
+    // Gunakan playerChat event yang tersedia di versi terbaru
+    const chatEvent = world.beforeEvents.playerChat || world.beforeEvents.chatSend;
+    
+    if (chatEvent) {
+        chatEvent.subscribe((event) => {
+            // Di versi baru, event.message adalah string, event.sender adalah player
+            const message = event.message.toLowerCase().trim();
             
-            const args = message.slice(5).trim().split(/\s+/);
-            handleCommand(args, event.sender);
-        }
-        
-        // Command untuk cek saldo
-        if (message.startsWith("/money") || message.startsWith("/balance") || message.startsWith("/bal")) {
-            event.cancel = true;
-            initializePlayer(event.sender.id);
-            const balance = getBalance(event.sender.id);
-            event.sender.sendMessage(`§eSaldo kamu: §a$${balance}`);
-        }
-        
-        // Command untuk transfer
-        if (message.startsWith("/pay")) {
-            event.cancel = true;
-            const parts = message.slice(4).trim().split(/\s+/);
-            
-            if (parts.length < 2) {
-                event.sender.sendMessage("§cGunakan: /pay <pemain> <jumlah>");
-                return;
+            if (message.startsWith("/sell")) {
+                event.cancel = true; // Cancel chat message
+                
+                const args = message.slice(5).trim().split(/\s+/);
+                handleCommand(args, event.sender);
             }
             
-            const targetName = parts[0];
-            const amount = parseInt(parts[1]);
-            
-            if (isNaN(amount) || amount <= 0) {
-                event.sender.sendMessage("§cJumlah harus berupa angka positif!");
-                return;
+            // Command untuk cek saldo
+            if (message.startsWith("/money") || message.startsWith("/balance") || message.startsWith("/bal")) {
+                event.cancel = true;
+                initializePlayer(event.sender.id);
+                const balance = getBalance(event.sender.id);
+                event.sender.sendMessage(`§eSaldo kamu: §a$${balance}`);
             }
             
-            // Cari pemain target
-            const targetPlayer = world.getPlayers({ name: targetName })[0];
-            
-            if (!targetPlayer) {
-                event.sender.sendMessage(`§cPemain "${targetName}" tidak ditemukan!`);
-                return;
-            }
-            
-            initializePlayer(event.sender.id);
-            initializePlayer(targetPlayer.id);
-            
-            // Import dinamis untuk menghindari circular dependency jika ada
-            const economyModule = require("./economy.js");
-            if (economyModule.transferBalance) {
-                if (economyModule.transferBalance(event.sender.id, targetPlayer.id, amount)) {
-                    event.sender.sendMessage(`§aBerhasil mengirim $${amount} ke ${targetPlayer.name}!`);
-                    targetPlayer.sendMessage(`§aKamu menerima $${amount} dari ${event.sender.name}!`);
-                } else {
-                    event.sender.sendMessage("§cSaldo tidak mencukupi!");
+            // Command untuk transfer
+            if (message.startsWith("/pay")) {
+                event.cancel = true;
+                const parts = message.slice(4).trim().split(/\s+/);
+                
+                if (parts.length < 2) {
+                    event.sender.sendMessage("§cGunakan: /pay <pemain> <jumlah>");
+                    return;
                 }
-            } else {
-                console.error("Fungsi transferBalance tidak ditemukan di economy.js");
+                
+                const targetName = parts[0];
+                const amount = parseInt(parts[1]);
+                
+                if (isNaN(amount) || amount <= 0) {
+                    event.sender.sendMessage("§cJumlah harus berupa angka positif!");
+                    return;
+                }
+                
+                // Cari pemain target
+                const targetPlayer = world.getPlayers({ name: targetName })[0];
+                
+                if (!targetPlayer) {
+                    event.sender.sendMessage(`§cPemain "${targetName}" tidak ditemukan!`);
+                    return;
+                }
+                
+                initializePlayer(event.sender.id);
+                initializePlayer(targetPlayer.id);
+                
+                // Import dinamis untuk menghindari circular dependency jika ada
+                const economyModule = require("./economy.js");
+                if (economyModule.transferBalance) {
+                    if (economyModule.transferBalance(event.sender.id, targetPlayer.id, amount)) {
+                        event.sender.sendMessage(`§aBerhasil mengirim $${amount} ke ${targetPlayer.name}!`);
+                        targetPlayer.sendMessage(`§aKamu menerima $${amount} dari ${event.sender.name}!`);
+                    } else {
+                        event.sender.sendMessage("§cSaldo tidak mencukupi!");
+                    }
+                } else {
+                    console.error("Fungsi transferBalance tidak ditemukan di economy.js");
+                }
             }
-        }
-    });
+        });
+    } else {
+        console.warn("Tidak ada event chat yang tersedia. Perintah custom mungkin tidak berfungsi.");
+    }
 
     // Welcome message saat player join
     world.afterEvents.playerJoin.subscribe((event) => {
