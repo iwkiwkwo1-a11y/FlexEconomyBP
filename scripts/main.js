@@ -147,11 +147,6 @@ export function handleCommand(args, player) {
     }
 }
 
-import { world, system } from "@minecraft/server";
-import { ActionFormResponse, MessageFormResponse, ModalFormData } from "@minecraft/server-ui";
-import { getBalance, addBalance, initializePlayer } from "./economy.js";
-import { getItemPrice } from "./config.js";
-
 // Pastikan world tersedia sebelum registrasi event
 if (!world || !world.beforeEvents) {
     console.error("Gagal mengakses world atau beforeEvents. Pastikan Script API aktif.");
